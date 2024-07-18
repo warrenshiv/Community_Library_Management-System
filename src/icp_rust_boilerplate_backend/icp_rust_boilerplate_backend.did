@@ -1,40 +1,50 @@
-type Expense = record {
+type Book = record {
   id : nat64;
-  restaurant_id : nat64;
-  description : text;
+  title : text;
+  isbn : text;
   created_at : nat64;
-  amount : float64;
+  author : text;
+  available : bool;
+  genre : text;
+  location : text;
+  publication_year : int32;
 };
-type ExpensePayload = record {
-  restaurant_id : nat64;
-  description : text;
-  amount : float64;
+type BookPayload = record {
+  title : text;
+  isbn : text;
+  author : text;
+  available : bool;
+  genre : text;
+  location : text;
+  publication_year : int32;
 };
-type InventoryItem = record {
+type Loan = record {
   id : nat64;
-  restaurant_id : nat64;
-  name : text;
-  created_at : nat64;
-  quantity : nat32;
+  fine : float64;
+  return_date : opt nat64;
+  loan_date : nat64;
+  book_id : nat64;
+  due_date : nat64;
+  member_id : nat64;
 };
-type InventoryItemPayload = record {
-  restaurant_id : nat64;
-  name : text;
-  quantity : nat32;
+type LoanPayload = record {
+  fine : float64;
+  return_date : opt nat64;
+  book_id : nat64;
+  due_date : nat64;
+  member_id : nat64;
 };
-type MenuItem = record {
+type Member = record {
   id : nat64;
-  restaurant_id : nat64;
-  name : text;
-  description : text;
+  username : text;
   created_at : nat64;
-  price : float64;
+  address : text;
+  phone_number : text;
 };
-type MenuItemPayload = record {
-  restaurant_id : nat64;
-  name : text;
-  description : text;
-  price : float64;
+type MemberPayload = record {
+  username : text;
+  address : text;
+  phone_number : text;
 };
 type Message = variant {
   Error : text;
@@ -42,86 +52,32 @@ type Message = variant {
   NotFound : text;
   Success : text;
 };
-type Order = record {
-  id : nat64;
-  status : text;
-  restaurant_id : nat64;
-  total : float64;
-  created_at : nat64;
-  items : vec nat64;
-};
-type OrderPayload = record {
-  restaurant_id : nat64;
-  total : float64;
-  items : vec nat64;
-};
 type Reservation = record {
   id : nat64;
-  restaurant_id : nat64;
-  name : text;
-  date_time : nat64;
-  created_at : nat64;
+  reservation_date : nat64;
+  book_id : nat64;
+  member_id : nat64;
 };
-type ReservationPayload = record {
-  restaurant_id : nat64;
-  name : text;
-  date_time : nat64;
-};
-type Restaurant = record {
-  id : nat64;
-  name : text;
-  created_at : nat64;
-  location : text;
-};
-type RestaurantPayload = record { name : text; location : text };
-type Result = variant { Ok : Expense; Err : Message };
-type Result_1 = variant { Ok : InventoryItem; Err : Message };
-type Result_10 = variant { Ok : vec Order; Err : Message };
-type Result_11 = variant { Ok : vec Reservation; Err : Message };
-type Result_12 = variant { Ok : vec Restaurant; Err : Message };
-type Result_13 = variant { Ok : vec Staff; Err : Message };
-type Result_2 = variant { Ok : MenuItem; Err : Message };
-type Result_3 = variant { Ok : Order; Err : Message };
-type Result_4 = variant { Ok : Reservation; Err : Message };
-type Result_5 = variant { Ok : Restaurant; Err : Message };
-type Result_6 = variant { Ok : Staff; Err : Message };
-type Result_7 = variant { Ok : vec Expense; Err : Message };
-type Result_8 = variant { Ok : vec InventoryItem; Err : Message };
-type Result_9 = variant { Ok : vec MenuItem; Err : Message };
-type Staff = record {
-  id : nat64;
-  restaurant_id : nat64;
-  name : text;
-  created_at : nat64;
-  schedule : text;
-  position : text;
-};
-type StaffPayload = record {
-  restaurant_id : nat64;
-  name : text;
-  schedule : text;
-  position : text;
-};
+type ReservationPayload = record { book_id : nat64; member_id : nat64 };
+type Result = variant { Ok : Book; Err : Message };
+type Result_1 = variant { Ok : Loan; Err : Message };
+type Result_2 = variant { Ok : Member; Err : Message };
+type Result_3 = variant { Ok : Reservation; Err : Message };
+type Result_4 = variant { Ok : vec Book; Err : Message };
+type Result_5 = variant { Ok : vec Loan; Err : Message };
+type Result_6 = variant { Ok : vec Member; Err : Message };
+type Result_7 = variant { Ok : vec Reservation; Err : Message };
 service : {
-  create_expense : (ExpensePayload) -> (Result);
-  create_inventory_item : (InventoryItemPayload) -> (Result_1);
-  create_menu_item : (MenuItemPayload) -> (Result_2);
-  create_order : (OrderPayload) -> (Result_3);
-  create_reservation : (ReservationPayload) -> (Result_4);
-  create_restaurant : (RestaurantPayload) -> (Result_5);
-  create_staff : (StaffPayload) -> (Result_6);
-  get_expense_by_id : (nat64) -> (Result) query;
-  get_expenses : () -> (Result_7) query;
-  get_inventory_item_by_id : (nat64) -> (Result_1) query;
-  get_inventory_items : () -> (Result_8) query;
-  get_menu_item_by_id : (nat64) -> (Result_2) query;
-  get_menu_items : () -> (Result_9) query;
-  get_order_by_id : (nat64) -> (Result_3) query;
-  get_orders : () -> (Result_10) query;
-  get_reservation_by_id : (nat64) -> (Result_4) query;
-  get_reservations : () -> (Result_11) query;
-  get_restaurant_by_id : (nat64) -> (Result_5) query;
-  get_restaurants : () -> (Result_12) query;
-  get_staff : () -> (Result_13) query;
-  get_staff_by_id : (nat64) -> (Result_6) query;
+  create_book : (BookPayload) -> (Result);
+  create_loan : (LoanPayload) -> (Result_1);
+  create_member : (MemberPayload) -> (Result_2);
+  create_reservation : (ReservationPayload) -> (Result_3);
+  get_book_by_id : (nat64) -> (Result) query;
+  get_books : () -> (Result_4) query;
+  get_loan_by_id : (nat64) -> (Result_1) query;
+  get_loans : () -> (Result_5) query;
+  get_member_by_id : (nat64) -> (Result_2) query;
+  get_members : () -> (Result_6) query;
+  get_reservation_by_id : (nat64) -> (Result_3) query;
+  get_reservations : () -> (Result_7) query;
 }

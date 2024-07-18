@@ -1,47 +1,32 @@
-# Restaurant Management System
+# Community Library Management System
 
-This project is a decentralized platform built on the Internet Computer, aiming to facilitate the management of restaurant details, staff, menus, orders, reservations, inventory, and expenses. It leverages the power of blockchain to ensure transparency and reliability in the management processes.
+This project is a decentralized platform built on the Internet Computer, aiming to facilitate the management of books, members, loans, and reservations. It leverages the power of blockchain to ensure transparency and reliability in the management processes.
 
 ## Key Features
 
-### Restaurant Management
-- **Create Restaurant:** Allows the creation of new restaurant profiles with validation for input fields.
-- **Get Restaurants:** Retrieves all registered restaurant profiles.
-- **Get Restaurant by ID:** Retrieves the profile of a specific restaurant by its unique ID.
+### Book Management
+- **Create Book**: Allows the creation of new book records with validation for input fields.
+- **Get Books**: Retrieves all registered book records.
+- **Get Book by ID**: Retrieves the details of a specific book by its unique ID.
 
-### Staff Management
-- **Create Staff:** Allows the creation of new staff profiles for a restaurant.
-- **Get Staff:** Retrieves all registered staff profiles.
-- **Get Staff by ID:** Retrieves the profile of a specific staff member by their unique ID.
+### Member Management
+- **Create Member**: Allows the creation of new member records with validation for input fields.
+- **Get Members**: Retrieves all registered member records.
+- **Get Member by ID**: Retrieves the details of a specific member by their unique ID.
 
-### Menu Management
-- **Create Menu Item:** Allows the creation of new menu items for a restaurant.
-- **Get Menu Items:** Retrieves all registered menu items.
-- **Get Menu Item by ID:** Retrieves the details of a specific menu item by its unique ID.
-
-### Order Management
-- **Create Order:** Allows the creation of new orders for a restaurant.
-- **Get Orders:** Retrieves all registered orders.
-- **Get Order by ID:** Retrieves the details of a specific order by its unique ID.
+### Loan Management
+- **Create Loan**: Allows the creation of new loans for books to members.
+- **Get Book Loans**: Retrieves all registered loan records.
+- **Get Loan by ID**: Retrieves the details of a specific loan by its unique ID.
 
 ### Reservation Management
-- **Create Reservation:** Allows the creation of new reservations for a restaurant.
-- **Get Reservations:** Retrieves all registered reservations.
-- **Get Reservation by ID:** Retrieves the details of a specific reservation by its unique ID.
-
-### Inventory Management
-- **Create Inventory Item:** Allows the creation of new inventory items for a restaurant.
-- **Get Inventory Items:** Retrieves all registered inventory items.
-- **Get Inventory Item by ID:** Retrieves the details of a specific inventory item by its unique ID.
-
-### Expense Management
-- **Create Expense:** Allows the creation of new expenses for a restaurant.
-- **Get Expenses:** Retrieves all registered expenses.
-- **Get Expense by ID:** Retrieves the details of a specific expense by its unique ID.
+- **Create Reservation**: Allows the creation of new reservations for books by members.
+- **Get Reservations**: Retrieves all registered reservation records.
+- **Get Reservation by ID**: Retrieves the details of a specific reservation by its unique ID.
 
 ### Error Handling
-- **Not Found:** Returns an error if a requested resource (restaurant, staff, menu item, order, reservation, inventory item, expense) is not found.
-- **Invalid Input:** Handles errors related to invalid input fields.
+- **Not Found**: Returns an error if a requested resource (book, member, loan, reservation) is not found.
+- **Invalid Input**: Handles errors related to invalid input fields.
 
 
 

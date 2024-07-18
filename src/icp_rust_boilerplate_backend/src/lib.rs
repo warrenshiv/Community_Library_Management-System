@@ -10,71 +10,47 @@ type Memory = VirtualMemory<DefaultMemoryImpl>;
 type IdCell = Cell<u64, Memory>;
 
 #[derive(candid::CandidType, Clone, Serialize, Deserialize, Default)]
-struct Restaurant {
+struct Book {
     id: u64,
-    name: String,
+    title: String,
+    author: String,
+    genre: String,
+    publication_year: i32,
+    isbn: String,
     location: String,
+    available: bool,
     created_at: u64,
 }
 
 #[derive(candid::CandidType, Clone, Serialize, Deserialize, Default)]
-struct Staff {
+struct Member {
     id: u64,
-    restaurant_id: u64,
-    name: String,
-    position: String,
-    schedule: String,
+    username: String,
+    phone_number: String,
+    address: String,
     created_at: u64,
 }
 
 #[derive(candid::CandidType, Clone, Serialize, Deserialize, Default)]
-struct MenuItem {
+struct Loan {
     id: u64,
-    restaurant_id: u64,
-    name: String,
-    description: String,
-    price: f64,
-    created_at: u64,
-}
-
-#[derive(candid::CandidType, Clone, Serialize, Deserialize, Default)]
-struct Order {
-    id: u64,
-    restaurant_id: u64,
-    items: Vec<u64>, // Menu item IDs
-    total: f64,
-    status: String, // e.g., "pending", "completed"
-    created_at: u64,
+    book_id: u64,
+    member_id: u64,
+    loan_date: u64,
+    due_date: u64,
+    return_date: Option<u64>,
+    fine: f64,
 }
 
 #[derive(candid::CandidType, Clone, Serialize, Deserialize, Default)]
 struct Reservation {
     id: u64,
-    restaurant_id: u64,
-    name: String,
-    date_time: u64,
-    created_at: u64,
+    book_id: u64,
+    member_id: u64,
+    reservation_date: u64,
 }
 
-#[derive(candid::CandidType, Clone, Serialize, Deserialize, Default)]
-struct InventoryItem {
-    id: u64,
-    restaurant_id: u64,
-    name: String,
-    quantity: u32,
-    created_at: u64,
-}
-
-#[derive(candid::CandidType, Clone, Serialize, Deserialize, Default)]
-struct Expense {
-    id: u64,
-    restaurant_id: u64,
-    description: String,
-    amount: f64,
-    created_at: u64,
-}
-
-impl Storable for Restaurant {
+impl Storable for Book {
     fn to_bytes(&self) -> Cow<[u8]> {
         Cow::Owned(Encode!(self).unwrap())
     }
@@ -84,12 +60,12 @@ impl Storable for Restaurant {
     }
 }
 
-impl BoundedStorable for Restaurant {
+impl BoundedStorable for Book {
     const MAX_SIZE: u32 = 1024;
     const IS_FIXED_SIZE: bool = false;
 }
 
-impl Storable for Staff {
+impl Storable for Member {
     fn to_bytes(&self) -> Cow<[u8]> {
         Cow::Owned(Encode!(self).unwrap())
     }
@@ -99,12 +75,12 @@ impl Storable for Staff {
     }
 }
 
-impl BoundedStorable for Staff {
+impl BoundedStorable for Member {
     const MAX_SIZE: u32 = 1024;
     const IS_FIXED_SIZE: bool = false;
 }
 
-impl Storable for MenuItem {
+impl Storable for Loan {
     fn to_bytes(&self) -> Cow<[u8]> {
         Cow::Owned(Encode!(self).unwrap())
     }
@@ -114,22 +90,7 @@ impl Storable for MenuItem {
     }
 }
 
-impl BoundedStorable for MenuItem {
-    const MAX_SIZE: u32 = 1024;
-    const IS_FIXED_SIZE: bool = false;
-}
-
-impl Storable for Order {
-    fn to_bytes(&self) -> Cow<[u8]> {
-        Cow::Owned(Encode!(self).unwrap())
-    }
-
-    fn from_bytes(bytes: Cow<[u8]>) -> Self {
-        Decode!(bytes.as_ref(), Self).unwrap()
-    }
-}
-
-impl BoundedStorable for Order {
+impl BoundedStorable for Loan {
     const MAX_SIZE: u32 = 1024;
     const IS_FIXED_SIZE: bool = false;
 }
@@ -149,36 +110,6 @@ impl BoundedStorable for Reservation {
     const IS_FIXED_SIZE: bool = false;
 }
 
-impl Storable for InventoryItem {
-    fn to_bytes(&self) -> Cow<[u8]> {
-        Cow::Owned(Encode!(self).unwrap())
-    }
-
-    fn from_bytes(bytes: Cow<[u8]>) -> Self {
-        Decode!(bytes.as_ref(), Self).unwrap()
-    }
-}
-
-impl BoundedStorable for InventoryItem {
-    const MAX_SIZE: u32 = 1024;
-    const IS_FIXED_SIZE: bool = false;
-}
-
-impl Storable for Expense {
-    fn to_bytes(&self) -> Cow<[u8]> {
-        Cow::Owned(Encode!(self).unwrap())
-    }
-
-    fn from_bytes(bytes: Cow<[u8]>) -> Self {
-        Decode!(bytes.as_ref(), Self).unwrap()
-    }
-}
-
-impl BoundedStorable for Expense {
-    const MAX_SIZE: u32 = 1024;
-    const IS_FIXED_SIZE: bool = false;
-}
-
 thread_local! {
     static MEMORY_MANAGER: RefCell<MemoryManager<DefaultMemoryImpl>> = RefCell::new(
         MemoryManager::init(DefaultMemoryImpl::default())
@@ -189,90 +120,58 @@ thread_local! {
             .expect("Cannot create a counter")
     );
 
-    static RESTAURANT_STORAGE: RefCell<StableBTreeMap<u64, Restaurant, Memory>> =
+    static BOOK_STORAGE: RefCell<StableBTreeMap<u64, Book, Memory>> =
         RefCell::new(StableBTreeMap::init(
             MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(1)))
     ));
 
-    static STAFF_STORAGE: RefCell<StableBTreeMap<u64, Staff, Memory>> =
+    static MEMBER_STORAGE: RefCell<StableBTreeMap<u64, Member, Memory>> =
         RefCell::new(StableBTreeMap::init(
             MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(2)))
     ));
 
-    static MENU_STORAGE: RefCell<StableBTreeMap<u64, MenuItem, Memory>> =
+    static LOAN_STORAGE: RefCell<StableBTreeMap<u64, Loan, Memory>> =
         RefCell::new(StableBTreeMap::init(
             MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(3)))
     ));
 
-    static ORDER_STORAGE: RefCell<StableBTreeMap<u64, Order, Memory>> =
+    static RESERVATION_STORAGE: RefCell<StableBTreeMap<u64, Reservation, Memory>> =
         RefCell::new(StableBTreeMap::init(
             MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(4)))
     ));
-
-    static RESERVATION_STORAGE: RefCell<StableBTreeMap<u64, Reservation, Memory>> =
-        RefCell::new(StableBTreeMap::init(
-            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(5)))
-    ));
-
-    static INVENTORY_STORAGE: RefCell<StableBTreeMap<u64, InventoryItem, Memory>> =
-        RefCell::new(StableBTreeMap::init(
-            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(6)))
-    ));
-
-    static EXPENSE_STORAGE: RefCell<StableBTreeMap<u64, Expense, Memory>> =
-        RefCell::new(StableBTreeMap::init(
-            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(7)))
-    ));
 }
 
 #[derive(candid::CandidType, Deserialize, Serialize)]
-struct RestaurantPayload {
-    name: String,
+struct BookPayload {
+    title: String,
+    author: String,
+    genre: String,
+    publication_year: i32,
+    isbn: String,
     location: String,
+    available: bool,
 }
 
 #[derive(candid::CandidType, Deserialize, Serialize)]
-struct StaffPayload {
-    restaurant_id: u64,
-    name: String,
-    position: String,
-    schedule: String,
+struct MemberPayload {
+    username: String,
+    phone_number: String,
+    address: String,
 }
 
 #[derive(candid::CandidType, Deserialize, Serialize)]
-struct MenuItemPayload {
-    restaurant_id: u64,
-    name: String,
-    description: String,
-    price: f64,
-}
-
-#[derive(candid::CandidType, Deserialize, Serialize)]
-struct OrderPayload {
-    restaurant_id: u64,
-    items: Vec<u64>, // Menu item IDs
-    total: f64,
+struct LoanPayload {
+    book_id: u64,
+    member_id: u64,
+    due_date: u64,
+    return_date: Option<u64>,
+    fine: f64,
 }
 
 #[derive(candid::CandidType, Deserialize, Serialize)]
 struct ReservationPayload {
-    restaurant_id: u64,
-    name: String,
-    date_time: u64,
-}
-
-#[derive(candid::CandidType, Deserialize, Serialize)]
-struct InventoryItemPayload {
-    restaurant_id: u64,
-    name: String,
-    quantity: u32,
-}
-
-#[derive(candid::CandidType, Deserialize, Serialize)]
-struct ExpensePayload {
-    restaurant_id: u64,
-    description: String,
-    amount: f64,
+    book_id: u64,
+    member_id: u64,
 }
 
 #[derive(candid::CandidType, Deserialize, Serialize)]
@@ -284,10 +183,10 @@ enum Message {
 }
 
 #[ic_cdk::update]
-fn create_restaurant(payload: RestaurantPayload) -> Result<Restaurant, Message> {
-    if payload.name.is_empty() || payload.location.is_empty() {
+fn create_book(payload: BookPayload) -> Result<Book, Message> {
+    if payload.title.is_empty() || payload.author.is_empty() || payload.isbn.is_empty() {
         return Err(Message::InvalidPayload(
-            "Ensure 'name' and 'location' are provided.".to_string(),
+            "Ensure 'title', 'author', and 'isbn' are provided.".to_string(),
         ));
     }
 
@@ -298,62 +197,56 @@ fn create_restaurant(payload: RestaurantPayload) -> Result<Restaurant, Message> 
         })
         .expect("Cannot increment ID counter");
 
-    let restaurant = Restaurant {
+    let book = Book {
         id,
-        name: payload.name,
+        title: payload.title,
+        author: payload.author,
+        genre: payload.genre,
+        publication_year: payload.publication_year,
+        isbn: payload.isbn,
         location: payload.location,
+        available: payload.available,
         created_at: current_time(),
     };
-    RESTAURANT_STORAGE.with(|storage| storage.borrow_mut().insert(id, restaurant.clone()));
-    Ok(restaurant)
+    BOOK_STORAGE.with(|storage| storage.borrow_mut().insert(id, book.clone()));
+    Ok(book)
 }
 
 #[ic_cdk::query]
-fn get_restaurants() -> Result<Vec<Restaurant>, Message> {
-    RESTAURANT_STORAGE.with(|storage| {
-        let restaurants: Vec<Restaurant> = storage
+fn get_books() -> Result<Vec<Book>, Message> {
+    BOOK_STORAGE.with(|storage| {
+        let books: Vec<Book> = storage
             .borrow()
             .iter()
-            .map(|(_, restaurant)| restaurant.clone())
+            .map(|(_, book)| book.clone())
             .collect();
 
-        if restaurants.is_empty() {
-            Err(Message::NotFound("No restaurants found".to_string()))
+        if books.is_empty() {
+            Err(Message::NotFound("No books found".to_string()))
         } else {
-            Ok(restaurants)
+            Ok(books)
         }
     })
 }
 
 #[ic_cdk::query]
-fn get_restaurant_by_id(id: u64) -> Result<Restaurant, Message> {
-    RESTAURANT_STORAGE.with(|storage| {
+fn get_book_by_id(id: u64) -> Result<Book, Message> {
+    BOOK_STORAGE.with(|storage| {
         storage
             .borrow()
             .iter()
-            .find(|(_, restaurant)| restaurant.id == id)
-            .map(|(_, restaurant)| restaurant.clone())
-            .ok_or(Message::NotFound("Restaurant not found".to_string()))
+            .find(|(_, book)| book.id == id)
+            .map(|(_, book)| book.clone())
+            .ok_or(Message::NotFound("Book not found".to_string()))
     })
 }
 
 #[ic_cdk::update]
-fn create_staff(payload: StaffPayload) -> Result<Staff, Message> {
-    if payload.name.is_empty() || payload.position.is_empty() || payload.schedule.is_empty() {
+fn create_member(payload: MemberPayload) -> Result<Member, Message> {
+    if payload.username.is_empty() || payload.phone_number.is_empty() || payload.address.is_empty() {
         return Err(Message::InvalidPayload(
-            "Ensure 'name', 'position', and 'schedule' are provided.".to_string(),
+            "Ensure 'username', 'phone_number', and 'address' are provided.".to_string(),
         ));
-    }
-
-    let restaurant = RESTAURANT_STORAGE.with(|storage| {
-        storage
-            .borrow()
-            .iter()
-            .find(|(_, restaurant)| restaurant.id == payload.restaurant_id)
-            .map(|(_, restaurant)| restaurant.clone())
-    });
-    if restaurant.is_none() {
-        return Err(Message::NotFound("Restaurant not found".to_string()));
     }
 
     let id = ID_COUNTER
@@ -363,64 +256,74 @@ fn create_staff(payload: StaffPayload) -> Result<Staff, Message> {
         })
         .expect("Cannot increment ID counter");
 
-    let staff = Staff {
+    let member = Member {
         id,
-        restaurant_id: payload.restaurant_id,
-        name: payload.name,
-        position: payload.position,
-        schedule: payload.schedule,
+        username: payload.username,
+        phone_number: payload.phone_number,
+        address: payload.address,
         created_at: current_time(),
     };
-    STAFF_STORAGE.with(|storage| storage.borrow_mut().insert(id, staff.clone()));
-    Ok(staff)
+    MEMBER_STORAGE.with(|storage| storage.borrow_mut().insert(id, member.clone()));
+    Ok(member)
 }
 
 #[ic_cdk::query]
-fn get_staffs() -> Result<Vec<Staff>, Message> {
-    STAFF_STORAGE.with(|storage| {
-        let staff: Vec<Staff> = storage
+fn get_members() -> Result<Vec<Member>, Message> {
+    MEMBER_STORAGE.with(|storage| {
+        let members: Vec<Member> = storage
             .borrow()
             .iter()
-            .map(|(_, staff)| staff.clone())
+            .map(|(_, member)| member.clone())
             .collect();
 
-        if staff.is_empty() {
-            Err(Message::NotFound("No staff found".to_string()))
+        if members.is_empty() {
+            Err(Message::NotFound("No members found".to_string()))
         } else {
-            Ok(staff)
+            Ok(members)
         }
     })
 }
 
 #[ic_cdk::query]
-fn get_staff_by_id(id: u64) -> Result<Staff, Message> {
-    STAFF_STORAGE.with(|storage| {
+fn get_member_by_id(id: u64) -> Result<Member, Message> {
+    MEMBER_STORAGE.with(|storage| {
         storage
             .borrow()
             .iter()
-            .find(|(_, staff)| staff.id == id)
-            .map(|(_, staff)| staff.clone())
-            .ok_or(Message::NotFound("Staff not found".to_string()))
+            .find(|(_, member)| member.id == id)
+            .map(|(_, member)| member.clone())
+            .ok_or(Message::NotFound("Member not found".to_string()))
     })
 }
 
 #[ic_cdk::update]
-fn create_menu_item(payload: MenuItemPayload) -> Result<MenuItem, Message> {
-    if payload.name.is_empty() || payload.description.is_empty() || payload.price <= 0.0 {
+fn create_loan(payload: LoanPayload) -> Result<Loan, Message> {
+    if payload.due_date == 0 {
         return Err(Message::InvalidPayload(
-            "Ensure 'name', 'description', and 'price' are provided and valid.".to_string(),
+            "Ensure 'due_date' is provided.".to_string(),
         ));
     }
 
-    let restaurant = RESTAURANT_STORAGE.with(|storage| {
+    let book = BOOK_STORAGE.with(|storage| {
         storage
             .borrow()
             .iter()
-            .find(|(_, restaurant)| restaurant.id == payload.restaurant_id)
-            .map(|(_, restaurant)| restaurant.clone())
+            .find(|(_, book)| book.id == payload.book_id)
+            .map(|(_, book)| book.clone())
     });
-    if restaurant.is_none() {
-        return Err(Message::NotFound("Restaurant not found".to_string()));
+    if book.is_none() {
+        return Err(Message::NotFound("Book not found".to_string()));
+    }
+
+    let member = MEMBER_STORAGE.with(|storage| {
+        storage
+            .borrow()
+            .iter()
+            .find(|(_, member)| member.id == payload.member_id)
+            .map(|(_, member)| member.clone())
+    });
+    if member.is_none() {
+        return Err(Message::NotFound("Member not found".to_string()));
     }
 
     let id = ID_COUNTER
@@ -430,143 +333,76 @@ fn create_menu_item(payload: MenuItemPayload) -> Result<MenuItem, Message> {
         })
         .expect("Cannot increment ID counter");
 
-    let menu_item = MenuItem {
+    let loan = Loan {
         id,
-        restaurant_id: payload.restaurant_id,
-        name: payload.name,
-        description: payload.description,
-        price: payload.price,
-        created_at: current_time(),
+        book_id: payload.book_id,
+        member_id: payload.member_id,
+        loan_date: current_time(),
+        due_date: payload.due_date,
+        return_date: payload.return_date,
+        fine: payload.fine,
     };
-    MENU_STORAGE.with(|storage| storage.borrow_mut().insert(id, menu_item.clone()));
-    Ok(menu_item)
+    LOAN_STORAGE.with(|storage| storage.borrow_mut().insert(id, loan.clone()));
+    Ok(loan)
 }
 
 #[ic_cdk::query]
-fn get_menu_items() -> Result<Vec<MenuItem>, Message> {
-    MENU_STORAGE.with(|storage| {
-        let menu_items: Vec<MenuItem> = storage
+fn get_book_loans() -> Result<Vec<Loan>, Message> {
+    LOAN_STORAGE.with(|storage| {
+        let loans: Vec<Loan> = storage
             .borrow()
             .iter()
-            .map(|(_, item)| item.clone())
+            .map(|(_, loan)| loan.clone())
             .collect();
 
-        if menu_items.is_empty() {
-            Err(Message::NotFound("No menu items found".to_string()))
+        if loans.is_empty() {
+            Err(Message::NotFound("No loans found".to_string()))
         } else {
-            Ok(menu_items)
+            Ok(loans)
         }
     })
 }
 
 #[ic_cdk::query]
-fn get_menu_item_by_id(id: u64) -> Result<MenuItem, Message> {
-    MENU_STORAGE.with(|storage| {
+fn get_book_loan_by_id(id: u64) -> Result<Loan, Message> {
+    LOAN_STORAGE.with(|storage| {
         storage
             .borrow()
             .iter()
-            .find(|(_, item)| item.id == id)
-            .map(|(_, item)| item.clone())
-            .ok_or(Message::NotFound("Menu item not found".to_string()))
-    })
-}
-
-#[ic_cdk::update]
-fn create_order(payload: OrderPayload) -> Result<Order, Message> {
-    if payload.items.is_empty() || payload.total <= 0.0 {
-        return Err(Message::InvalidPayload(
-            "Ensure 'items' are provided and 'total' is valid.".to_string(),
-        ));
-    }
-
-    let restaurant = RESTAURANT_STORAGE.with(|storage| {
-        storage
-            .borrow()
-            .iter()
-            .find(|(_, restaurant)| restaurant.id == payload.restaurant_id)
-            .map(|(_, restaurant)| restaurant.clone())
-    });
-    if restaurant.is_none() {
-        return Err(Message::NotFound("Restaurant not found".to_string()));
-    }
-
-    for item_id in &payload.items {
-        let item_exists = MENU_STORAGE.with(|storage| {
-            storage
-                .borrow()
-                .iter()
-                .any(|(_, item)| item.id == *item_id)
-        });
-        if !item_exists {
-            return Err(Message::NotFound(format!("Menu item with ID {} not found", item_id)));
-        }
-    }
-
-    let id = ID_COUNTER
-        .with(|counter| {
-            let current_value = *counter.borrow().get();
-            counter.borrow_mut().set(current_value + 1)
-        })
-        .expect("Cannot increment ID counter");
-
-    let order = Order {
-        id,
-        restaurant_id: payload.restaurant_id,
-        items: payload.items,
-        total: payload.total,
-        status: "pending".to_string(),
-        created_at: current_time(),
-    };
-    ORDER_STORAGE.with(|storage| storage.borrow_mut().insert(id, order.clone()));
-    Ok(order)
-}
-
-#[ic_cdk::query]
-fn get_orders() -> Result<Vec<Order>, Message> {
-    ORDER_STORAGE.with(|storage| {
-        let orders: Vec<Order> = storage
-            .borrow()
-            .iter()
-            .map(|(_, order)| order.clone())
-            .collect();
-
-        if orders.is_empty() {
-            Err(Message::NotFound("No orders found".to_string()))
-        } else {
-            Ok(orders)
-        }
-    })
-}
-
-#[ic_cdk::query]
-fn get_order_by_id(id: u64) -> Result<Order, Message> {
-    ORDER_STORAGE.with(|storage| {
-        storage
-            .borrow()
-            .iter()
-            .find(|(_, order)| order.id == id)
-            .map(|(_, order)| order.clone())
-            .ok_or(Message::NotFound("Order not found".to_string()))
+            .find(|(_, loan)| loan.id == id)
+            .map(|(_, loan)| loan.clone())
+            .ok_or(Message::NotFound("Loan not found".to_string()))
     })
 }
 
 #[ic_cdk::update]
 fn create_reservation(payload: ReservationPayload) -> Result<Reservation, Message> {
-    if payload.name.is_empty() || payload.date_time == 0 {
+    if payload.book_id == 0 || payload.member_id == 0 {
         return Err(Message::InvalidPayload(
-            "Ensure 'name' and 'date_time' are provided.".to_string(),
+            "Ensure 'book_id' and 'member_id' are provided.".to_string(),
         ));
     }
 
-    let restaurant = RESTAURANT_STORAGE.with(|storage| {
+    let book = BOOK_STORAGE.with(|storage| {
         storage
             .borrow()
             .iter()
-            .find(|(_, restaurant)| restaurant.id == payload.restaurant_id)
-            .map(|(_, restaurant)| restaurant.clone())
+            .find(|(_, book)| book.id == payload.book_id)
+            .map(|(_, book)| book.clone())
     });
-    if restaurant.is_none() {
-        return Err(Message::NotFound("Restaurant not found".to_string()));
+    if book.is_none() {
+        return Err(Message::NotFound("Book not found".to_string()));
+    }
+
+    let member = MEMBER_STORAGE.with(|storage| {
+        storage
+            .borrow()
+            .iter()
+            .find(|(_, member)| member.id == payload.member_id)
+            .map(|(_, member)| member.clone())
+    });
+    if member.is_none() {
+        return Err(Message::NotFound("Member not found".to_string()));
     }
 
     let id = ID_COUNTER
@@ -578,10 +414,9 @@ fn create_reservation(payload: ReservationPayload) -> Result<Reservation, Messag
 
     let reservation = Reservation {
         id,
-        restaurant_id: payload.restaurant_id,
-        name: payload.name,
-        date_time: payload.date_time,
-        created_at: current_time(),
+        book_id: payload.book_id,
+        member_id: payload.member_id,
+        reservation_date: current_time(),
     };
     RESERVATION_STORAGE.with(|storage| storage.borrow_mut().insert(id, reservation.clone()));
     Ok(reservation)
@@ -613,138 +448,6 @@ fn get_reservation_by_id(id: u64) -> Result<Reservation, Message> {
             .find(|(_, reservation)| reservation.id == id)
             .map(|(_, reservation)| reservation.clone())
             .ok_or(Message::NotFound("Reservation not found".to_string()))
-    })
-}
-
-#[ic_cdk::update]
-fn create_inventory_item(payload: InventoryItemPayload) -> Result<InventoryItem, Message> {
-    if payload.name.is_empty() || payload.quantity == 0 {
-        return Err(Message::InvalidPayload(
-            "Ensure 'name' and 'quantity' are provided.".to_string(),
-        ));
-    }
-
-    let restaurant = RESTAURANT_STORAGE.with(|storage| {
-        storage
-            .borrow()
-            .iter()
-            .find(|(_, restaurant)| restaurant.id == payload.restaurant_id)
-            .map(|(_, restaurant)| restaurant.clone())
-    });
-    if restaurant.is_none() {
-        return Err(Message::NotFound("Restaurant not found".to_string()));
-    }
-
-    let id = ID_COUNTER
-        .with(|counter| {
-            let current_value = *counter.borrow().get();
-            counter.borrow_mut().set(current_value + 1)
-        })
-        .expect("Cannot increment ID counter");
-
-    let inventory_item = InventoryItem {
-        id,
-        restaurant_id: payload.restaurant_id,
-        name: payload.name,
-        quantity: payload.quantity,
-        created_at: current_time(),
-    };
-    INVENTORY_STORAGE.with(|storage| storage.borrow_mut().insert(id, inventory_item.clone()));
-    Ok(inventory_item)
-}
-
-#[ic_cdk::query]
-fn get_inventory_items() -> Result<Vec<InventoryItem>, Message> {
-    INVENTORY_STORAGE.with(|storage| {
-        let inventory_items: Vec<InventoryItem> = storage
-            .borrow()
-            .iter()
-            .map(|(_, item)| item.clone())
-            .collect();
-
-        if inventory_items.is_empty() {
-            Err(Message::NotFound("No inventory items found".to_string()))
-        } else {
-            Ok(inventory_items)
-        }
-    })
-}
-
-#[ic_cdk::query]
-fn get_inventory_item_by_id(id: u64) -> Result<InventoryItem, Message> {
-    INVENTORY_STORAGE.with(|storage| {
-        storage
-            .borrow()
-            .iter()
-            .find(|(_, item)| item.id == id)
-            .map(|(_, item)| item.clone())
-            .ok_or(Message::NotFound("Inventory item not found".to_string()))
-    })
-}
-
-#[ic_cdk::update]
-fn create_expense(payload: ExpensePayload) -> Result<Expense, Message> {
-    if payload.description.is_empty() || payload.amount <= 0.0 {
-        return Err(Message::InvalidPayload(
-            "Ensure 'description' and 'amount' are provided and valid.".to_string(),
-        ));
-    }
-
-    let restaurant = RESTAURANT_STORAGE.with(|storage| {
-        storage
-            .borrow()
-            .iter()
-            .find(|(_, restaurant)| restaurant.id == payload.restaurant_id)
-            .map(|(_, restaurant)| restaurant.clone())
-    });
-    if restaurant.is_none() {
-        return Err(Message::NotFound("Restaurant not found".to_string()));
-    }
-
-    let id = ID_COUNTER
-        .with(|counter| {
-            let current_value = *counter.borrow().get();
-            counter.borrow_mut().set(current_value + 1)
-        })
-        .expect("Cannot increment ID counter");
-
-    let expense = Expense {
-        id,
-        restaurant_id: payload.restaurant_id,
-        description: payload.description,
-        amount: payload.amount,
-        created_at: current_time(),
-    };
-    EXPENSE_STORAGE.with(|storage| storage.borrow_mut().insert(id, expense.clone()));
-    Ok(expense)
-}
-
-#[ic_cdk::query]
-fn get_expenses() -> Result<Vec<Expense>, Message> {
-    EXPENSE_STORAGE.with(|storage| {
-        let expenses: Vec<Expense> = storage
-            .borrow()
-            .iter()
-            .map(|(_, expense)| expense.clone())
-            .collect();
-
-        if expenses.is_empty() {
-            Err(Message::NotFound("No expenses found".to_string()))
-        } else {
-            Ok(expenses)
-        }
-    })
-}
-
-#[ic_cdk::query]
-fn get_expense_by_id(id: u64) -> Result<Expense, Message> {
-    EXPENSE_STORAGE.with(|storage| {
-        storage
-            .borrow()
-            .iter()
-            .find(|(_, expense)| expense.id == id)
-            .map(|(_, expense)| expense.clone())
-            .ok_or(Message::NotFound("Expense not found".to_string()))
     })
 }
 
